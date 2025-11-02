@@ -953,15 +953,43 @@ class BatchRenamerUI(QDialog):
         self.chk_tr.toggled.connect(self.refresh_preview)
         self.chk_space.toggled.connect(self.refresh_preview)
         self.chk_lower.toggled.connect(self.refresh_preview)
-
+        self.btn_metadata.clicked.connect(self.show_metadata_viewer)
+        self.btn_save_template.clicked.connect(self.save_settings)
+        self.btn_load_template.clicked.connect(self.load_template_to_ui)
         self.btn_help.clicked.connect(self.show_help_dialog)
         self.btn_about.clicked.connect(self.show_about_dialog)
         
         self.cmb_lang.currentIndexChanged.connect(lambda: self.set_language(self.cmb_lang.currentData()))
         
         self.setup_token_menu()
-            
+
+  # batch_rename.py dosyasında, BatchRenamerUI sınıfı içinde, show_metadata_viewer metodunun yeni hali:
+
     def show_metadata_viewer(self):
+        global resolve, pm, project, mp
+        
+        # --- BAĞLANTIYI KONTROL ET VE YENİLE ---
+        # Resolve objesi veya Media Pool objesi yoksa yeniden bağlanmayı dene.
+        if not resolve or not mp:
+            try:
+                # DaVinciResolveScript'i tekrar içeri aktarma (API'ye bağlanmanın en güvenli yolu)
+                import DaVinciResolveScript as bmd 
+                resolve = bmd.scriptapp("Resolve")
+                if resolve:
+                    pm = resolve.GetProjectManager()
+                    if pm:
+                        project = pm.GetCurrentProject()
+                        if project:
+                            mp = project.GetMediaPool()
+            except Exception:
+                pass # Hata olsa bile sessizce yakala
+        
+        # Final Kontrol: Bağlantı kuruldu mu?
+        if not resolve or not mp:
+            QMessageBox.critical(self, get_ui_text("scope_group"), get_ui_text("err_no_resolve"))
+            return
+        # ----------------------------------------
+
         items = self.collect_items()
         if not items:
             QMessageBox.warning(self, get_ui_text("scope_group"), get_ui_text("err_no_clip"))
@@ -970,6 +998,7 @@ class BatchRenamerUI(QDialog):
         viewer = MetadataViewer(items, self)
         viewer.exec()
 
+        
     def show_about_dialog(self):
         AboutDialog(self).exec()
 
